@@ -1,72 +1,191 @@
-#!/usr/bin/env python
-# take top [numStructures] similarity structures from a pdb trajectory
-numStructures = 1
-import enm
-import numpy as np
+# Paul Glenn
+# enm.py
 import sys
-import os
-import ptraj
-import time
+import numpy as np
+import itertools as it
+cutoff = 1.5 # [nm] - distance cutoff for hessian calc
+tc =  5 # number of chosen NormalModes for comparison
 
-tstart = time.clock()
-def WriteReferenceModes(fi = None , ff = None ) :
-    if not fi is None  :
-        init = enm.enm(fi)
-        vi = init.V
-        #print vi
-        outfile = open('ref_modes.dat','w')
-        for i in range(vi.shape[0]-1):
-                outfile.write('%.8f '%vi[i])
-        outfile.write('%.8f\n'%vi[-1])
-    if not ff is None:
-        final = enm.enm(ff)
-        vf = final.V
-        for i in range(vf.shape[0]-1):
-                outfile.write('%.8f '%vf[i])
-        outfile.write('%.8f\n'%vf[-1])
-    outfile.close()
+#------------------------------------------------
+# file parsing stuff
+def ReadInPDBFileCA(fn) :
+    R = list()
+    fin = open(fn, 'r')
+    lines = fin.readlines()
+    lines = [L for L in lines if 'CA' == L[13:15]]
+    fin.close()
+    for line in lines:
+        resID = int( line[22:26] )
+        #print resID
+        x  = line[30:38]
+        y  = line[38:46]
+        z  = line[46:54]
+        coords = [float(i)/10. for i in [x,y,z]]
+        R.append( np.array(coords) )
+    return R
 
-def ReadReferenceModes():
-	infile = open('ref_modes.dat','r')
-	lines = [x.split() for x in infile.readlines()]
-	V0 = [] ; V1 = []
-	V0 = [float(x) for x in lines[0] ]
-        if len(lines) > 1: V1 = [float(x) for x in lines[1] ]
-	V0 = np.array(V0)
-	V1 = np.array(V1)
-	return V0, V1
+def ReadInGroFileCA(fn = 'em/em.gro'):
+    R = list()
+    fin = open(fn,'r')
+    lines = [x for x in fin.readlines() if 'CA' in x ]
+    fin.close()
+    for line in lines:
+        #if len(line) < 44 or not 'CA' in line: continue
+        #print line
+        x = line[20:28]
+        y = line[28:36]
+        z = line[36:44]
+        coords = [float(i) for i in [x,y,z] ]
+        R.append(np.array(coords,dtype='float64'))
+    return R
 
-if not os.path.isfile('ref_modes.dat'):
-    fi = 'em/em3.gro'
-    WriteReferenceModes(fi=fi )
+def ReadInCACoordinates(fn):
+    if fn[-3:] == 'pdb':
+        R = ReadInPDBFileCA(fn)
+    elif fn[-3:] == 'gro':
+        R = ReadInGroFileCA(fn)
+    else:
+        sys.exit('File format unknown?')
+        R = None
+    return R
 
-# driver part
+def ReadInPDBTrajectory(fn):
+    R = list()
+    fin = open(fn, 'r')
+    lines = [L for L in fin.readlines() if 'CA' == L[13:15] or 'END' == L[:3] ]
+    fin.close()
+    traj = []
+    for line in lines:
+        if 'END' in line:
+            traj.append(list(R))
+            R[:] = []
+            continue
+        #print resID
+        resID = int( line[22:26] )
+        x  = line[30:38]
+        y  = line[38:46]
+        z  = line[46:54]
+        coords = [float(i)/10.  for i in [x,y,z]]
+        R.append( np.array(coords,dtype='float64') )
 
-V0 , V1 = ReadReferenceModes()
+    return traj
 
-trajFile = 'traj.pdb'
+def GetDistances(R):
+    numRes = len(R)
+    resList = range(numRes)
+    D = np.zeros([ numRes , numRes])
+    for i in resList:
+        for j in resList[i+1:]:
+            rij =  np.linalg.norm(R[i] - R[j])
+            D[i,j] = rij
+            D[j,i] = rij
+    return D
 
-traj = ptraj.ReadInTrajectory(trajFile) # inb4AMBER...
-init = enm.enm('topol/conf.gro')
-X = []
-for R in traj :
-    current = enm.enm(coords=R )
-    sim = current.Similarity(init)
-    X.append(sim)
-T = [0] + list(np.linspace(1.0,50.0,len(X)-1))
+# -----------------------------------------------
+# Hessian calculation
+# implementation of method from
+# Zheng et al, Proteins 2010 78:2469-2481
+# -----------------------------------------------
+def computeHessian(R, _Rij ):
+    numRes = len(R)
+    H = np.zeros((3*numRes, 3*numRes))
+    resList = range(numRes)
+    Rij = GetDistances(R)
 
-itr = 0
-while itr < numStructures :
-    M = max(X[1:])
-    frame = X.index(M)
-    print frame, X[frame]
-    X.remove(M)
-    itr += 1
+    PermsOfQ = list(it.product(range(3),range(3)) )
+    # the it.product is a one-time use object, here we make it permanent
 
-outfile = open('inms.dat','w')
-for i in range(len(X)):
-    outfile.write('%.2f\t%f\n'%(T[i],X[i]))
-outfile.close()
+    print 'Computing Hessian Matrix ...'
+    for i in resList :
 
-tdiff = time.clock() - tstart
-print 'time taken: ', tdiff
+        for j in resList[i+1:] :
+
+            _dij = _Rij[i,j]
+
+            if _dij < cutoff:
+                dij = Rij[i,j]
+                ddij = (dij - _dij) / dij
+
+                for ip in [i,j]:
+
+                    for jp in [i,j]:
+
+                        for qi,qj in PermsOfQ:
+
+                            dqi = ( R[ip][qi] - R[jp][qi]) / dij
+                            dqj = (R[ip][qj] - R[jp][qj]) / dij
+                            if ip == jp :
+                                if qi == qj :
+                                    h = ddij + (1-ddij) * dqi * dqi
+                                else:
+                                    h = (1-ddij) * dqi * dqj
+                            else:
+                                if qi == qj:
+                                    h  = - (ddij + (1-ddij) * dqi * dqj)
+                                else:
+                                    h  = - (1-ddij) * dqi * dqj
+
+                            H[3*ip+qi, 3*jp + qj] += h
+
+    return H
+
+def DominantMode(evals, evecs):
+    imax = len(evals) - 1
+    i = 0
+    while evals[i] <= 0  and i < imax: i += 1
+    return evecs[i]
+
+# --------------------------------
+# Elastic Network Model
+# --------------------------------
+class ENM:
+
+    def __init__(self,R,_Rij):
+        # eigenvalues: self.EigenFreqs
+        # eigenvectors: self.NormalModes
+
+        self.R = R
+        self.H = computeHessian(self.R,np.copy(_Rij))
+        self.EigenFreqs , self.NormalModes = np.linalg.eigh(self.H)
+
+        self.EigenFreqs = np.fabs(self.EigenFreqs)
+        idx = self.EigenFreqs.argsort()
+        self.EigenFreqs = self.EigenFreqs[idx]
+        self.NormalModes = self.NormalModes[idx]
+        self.V = DominantMode(self.EigenFreqs, self.NormalModes )
+
+    #--------------------------------------------------
+    # Structural Similarity and INM overlap calculation
+    # is based on Peng et al , Biophys J 2010 ; 98:2356
+    # eqs (7) and (8)
+    #--------------------------------------------------
+
+    def ComputeOverlap(self,Vref):
+        X = []
+        for i in range(len(self.EigenFreqs)):
+            wi = self.EigenFreqs[i]
+            vi = self.NormalModes[i]
+            if np.linalg.norm(vi) != 0 and wi > 0:
+                dij = np.fabs( np.dot(vi,Vref) )  / (np.linalg.norm(vi) * np.linalg.norm(Vref))
+                X.append(dij)
+        di = np.amax(X)
+        return di
+
+    def Similarity(self, ref_enm):
+        s = 0 # similarity
+        SumW = 0
+        for i in range(tc):
+            wi = ref_enm.EigenFreqs[i]
+            vi = ref_enm.NormalModes[i]
+            if wi > 0:
+                weight = (1./wi) ** 2.
+                si = weight * self.ComputeOverlap(vi)
+                SumW  += weight
+                s += si
+        s /= SumW
+        return s
+
+
+
+
+

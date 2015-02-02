@@ -1,4 +1,5 @@
-/* ptraj.cpp 
+/* nma.cpp 
+ * Normal Mode Analysis Code 
  * Author : Paul Glenn 
  * Date: Feb 1 2015 
  */ 
@@ -12,6 +13,7 @@
 #include<cholmod.h>
 #include<Eigen/Dense>
 #include<cmath>
+#include<Eigen/Eigenvalues>
 using Eigen::MatrixXd;
 using std::ifstream; 
 using std::cout ; 
@@ -90,9 +92,9 @@ MatrixXd GetDistances(MatrixXd R)
 			D(j,i) = D(i,j) ; 
 		}
 		D(i,i) = 0.0 ; 
-		cout << "got all distances for particle "<< i << endl; 
+		//cout << "got all distances for particle "<< i << endl; 
 	}
-	cout << "Done!" << endl;
+	//cout << "Done!" << endl;
 
 	return D ; 
 }
@@ -104,7 +106,7 @@ MatrixXd GetDistances(MatrixXd R)
  * -----------------------------------------*/
 MatrixXd ComputeHessian(MatrixXd R, MatrixXd _Rij) 
 {
-	cout << "Calculating distances..."<< endl; 
+	//cout << "Calculating distances..."<< endl; 
 	int numRes, ndf; 
 	int i , j , ii, jj, ip, jp, qi, qj ; 
 	double dij, _dij, ddij, dqi, dqj,dqij,h ; 
@@ -153,7 +155,6 @@ MatrixXd ComputeHessian(MatrixXd R, MatrixXd _Rij)
 							}
 						}
 						//Hij(3*ip+qi, 3*jp+qj) = h ; 
-						cout << H.rows() << endl; 
 						H(3*ip+qi, 3*jp+qj) = H(3*ip+qi, 3*jp+qj) +  h ; 
 					}
 					}
@@ -175,18 +176,16 @@ class ENM {
 	
 	public:
 	
-		MatrixXd R, H , modes; 
+		MatrixXd R, modes, H; 
 
-		Eigen::EigenSolver<MatrixXd> es; 
+		Eigen::EigenSolver< MatrixXd > es; 
 
 
 		ENM(string fn, MatrixXd Rin, MatrixXd _Rij) {
 			if (fn != "") {
 				R = ReadInPDBFileCA(fn) ; 
-				cout << "a" << endl; 
 			} else if (Rin.size() > 0){ 
 				R  = Rin ; 
-				cout << "b" << endl; 
 				//cout << R << endl;
 			} else {
 				cerr << "Error: " << endl; 
@@ -195,13 +194,26 @@ class ENM {
 				exit(1) ; 
 			}
 			
-			H = ComputeHessian(R,_Rij) ;
-			//es.compute(H,true)  ; // Compute eigenvectors and eigenvals  
+			H = ComputeHessian(R,_Rij);
+			
+			// count num zeros in Hessian 
+			int c = 0 ; 
+			for(int i = 0 ; i < H.rows(); i++ ) { 
+			for(int j = 0 ; j < H.cols(); j++) {
+					if(H(i,j) == 0 ) c++;  
+			}
+			}
+			cout << c/(double) H.size() << endl; 
+			cout << "Computing Eigenvalues: " << endl; 
+			es.compute(H)  ; // Compute eigenvectors and eigenvals  
+			cout<< es.eigenvectors() << endl;
+			//cout << es.eigenvalues() << endl; 
 			//cout << es.eigenvectors() << endl;
 		} 
 
 		double ComputeOverlap(ENM other) { 
 			double O ; 
+
 			return O ; 
 		}	
 
@@ -218,12 +230,13 @@ class ENM {
 int main() { 
 	
 	//ReadInPDBFileCA("/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_prep/init.pdb") ;
-	MatrixXd D, R, _D, _R ; 
+	MatrixXd R, _D, _R ; 
+	ENM *enm; 
 	R = ReadInPDBFileCA("/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_prep/init.pdb") ;
 	_R = ReadInPDBFileCA("/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_prep/em/em.pdb") ; 
 	_D = GetDistances(_R ); 
 	//cout << _D << endl; 
-	ENM * enm = new ENM("" , R , _D);  
+	enm = new ENM("" , R , _D);  
 
 	return 0; 
 
