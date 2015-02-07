@@ -1,0 +1,54 @@
+         21533669 function calls in 437.891 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        2    0.000    0.000    0.047    0.024 function_base.py:781(copy)
+        2    0.000    0.000  116.203   58.102 linalg.py:1069(eigh)
+        2    0.000    0.000    0.000    0.000 linalg.py:127(_to_native_byte_order)
+        2    0.000    0.000    0.804    0.402 linalg.py:139(_fastCopyAndTranspose)
+        2    0.000    0.000    0.000    0.000 linalg.py:151(_assertRank2)
+        2    0.000    0.000    0.000    0.000 linalg.py:157(_assertSquareness)
+  2821518   34.084    0.000   53.157    0.000 linalg.py:1840(norm)
+        2    0.000    0.000    0.000    0.000 linalg.py:66(_makearray)
+        4    0.000    0.000    0.000    0.000 linalg.py:71(isComplexType)
+        4    0.000    0.000    0.000    0.000 linalg.py:84(_realType)
+        2    0.000    0.000    0.000    0.000 linalg.py:90(_linalgRealType)
+        2    0.000    0.000    0.000    0.000 linalg.py:99(_commonType)
+        2    2.683    1.342  192.255   96.128 nma.py:142(__init__)
+     8234    0.011    0.000    0.011    0.000 nma.py:155(<genexpr>)
+     1372   15.807    0.012  223.376    0.163 nma.py:165(ComputeOverlap)
+        1    0.264    0.264  223.639  223.639 nma.py:178(Similarity)
+        1    0.001    0.001  437.891  437.891 nma.py:195(TrajectoryINMs)
+        3    0.028    0.009    0.116    0.039 nma.py:27(ReadInGroFileCA)
+        2    0.000    0.000    0.056    0.028 nma.py:42(ReadInCACoordinates)
+        3   19.408    6.469   72.603   24.201 nma.py:72(GetDistances)
+        2   22.332   11.166   73.293   36.646 nma.py:88(computeHessian)
+  2821520    2.636    0.000    6.297    0.000 numeric.py:167(asarray)
+        2    0.000    0.000    0.000    0.000 {getattr}
+        6    0.000    0.000    0.000    0.000 {issubclass}
+       11    0.000    0.000    0.000    0.000 {len}
+     1374    0.120    0.000    0.120    0.000 {max}
+        2    0.000    0.000    0.000    0.000 {method '__array_prepare__' of 'numpy.ndarray' objects}
+  2296731    0.519    0.000    0.519    0.000 {method 'append' of 'list' objects}
+        2    0.000    0.000    0.000    0.000 {method 'argsort' of 'numpy.ndarray' objects}
+        4    0.396    0.099    0.396    0.099 {method 'astype' of 'numpy.ndarray' objects}
+        3    0.000    0.000    0.000    0.000 {method 'close' of 'file' objects}
+  2821518    1.487    0.000    1.487    0.000 {method 'conj' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        4    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+        2    0.017    0.009    0.017    0.009 {method 'index' of 'list' objects}
+  2821518    2.323    0.000    2.323    0.000 {method 'ravel' of 'numpy.ndarray' objects}
+        3    0.038    0.013    0.038    0.013 {method 'readlines' of 'file' objects}
+  2821518    8.966    0.000    8.966    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+        2    0.000    0.000    0.000    0.000 {method 'transpose' of 'numpy.ndarray' objects}
+        3    0.000    0.000    0.000    0.000 {min}
+  2292612  206.930    0.000  206.930    0.000 {numpy.core._dotblas.dot}
+        2    0.804    0.402    0.804    0.402 {numpy.core.multiarray._fastCopyAndTranspose}
+  2825638    3.758    0.000    3.758    0.000 {numpy.core.multiarray.array}
+       13    1.575    0.121    1.575    0.121 {numpy.core.multiarray.zeros}
+        4  113.704   28.426  113.704   28.426 {numpy.linalg.lapack_lite.dsyevd}
+        3    0.000    0.000    0.000    0.000 {open}
+        9    0.000    0.000    0.000    0.000 {range}
+
+
