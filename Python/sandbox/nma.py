@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import itertools as it
 import time
-cutoff = 1.5 # [nm] - distance cutoff for hessian calc
+cutoff = 1.3 # [nm] - distance cutoff for hessian calc
 tc = 20 # number of chosen NormalModes for comparison
 
 #------------------------------------------------
@@ -100,6 +100,9 @@ def computeHessian(R, _Rij,NRES=0 ):
 	for i in resList :
 
 		for j in resList :
+                    _dij = _Rij[i,j]
+
+                    if _dij < cutoff:
 
                         if i == j :
 
@@ -108,6 +111,7 @@ def computeHessian(R, _Rij,NRES=0 ):
                                 _dij = _Rij[i,k]
 
                                 if _dij < cutoff and i != k:
+                                    if i == 0 and k == 6: print 'Aah!'
 
                                     for qi,qj in PermsOfQ:
 
@@ -120,9 +124,10 @@ def computeHessian(R, _Rij,NRES=0 ):
                             for qi,qj in PermsOfQ:
 
                                 _dij = _Rij[i,j]
-                                dqi = ( R[i][qi] - R[j][qi]) / _dij
-                                dqj = (R[i][qj] - R[j][qj]) / _dij
-                                h = - dqi * dqj
+                                if _dij < cutoff:
+                                    dqi = ( R[i][qi] - R[j][qi]) / _dij
+                                    dqj = (R[i][qj] - R[j][qj]) / _dij
+                                    h = - dqi * dqj
 
 
                                 H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
@@ -148,10 +153,16 @@ class ENM:
 		self.R = np.copy(R)
 
 		self.H = computeHessian(R ,np.copy(_Rij),NRES = self.NRES)
+                #print self.H[0,:]
 		#print self.H.shape
 		start = time.clock()
 		self.EigenFreqs , self.NormalModes = np.linalg.eigh(self.H)
 		print 'time for hessian: ' , time.clock() - start
+                print 'cutoff: ', tc
+		print 'modes: ', self.EigenFreqs.shape
+		for i in range(self.N):
+                    print self.EigenFreqs[i]
+                sys.exit()
 
 
 		self.EigenFreqs = np.fabs(self.EigenFreqs)
@@ -159,9 +170,6 @@ class ENM:
 		self.EigenFreqs = self.EigenFreqs[idx]
 		#self.start = list(i > 1e-15 for i in self.EigenFreqs).index(True)
 		self.NormalModes = self.NormalModes[idx]
-		print 'modes: ', self.EigenFreqs.shape
-		for i in range(tc):
-                    print self.EigenFreqs[i]
 		#self.V = DominantMode(self.EigenFreqs, self.NormalModes )
 
 	#--------------------------------------------------

@@ -10,10 +10,14 @@ import sys
 import time
 prefix = '/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_prep/'
 #prefix = '/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_test/'
+#prefix = '/Users/paulglen/Dropbox/CompBiophysics/1ptq.pdb'
 
 em = prefix + 'em/em.gro'
 ref = prefix + 'topol/conf.gro'
-trajFile = prefix + 'traj.pdb'
+trajFile = prefix + 'tiny.pdb'
+#em = prefix
+#ref = prefix
+#trajFile = prefix
 
 tstart = time.clock()
 pr = cProfile.Profile()
