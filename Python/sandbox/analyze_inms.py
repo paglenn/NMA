@@ -11,10 +11,15 @@ import time
 prefix = '/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_prep/'
 #prefix = '/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_test/'
 #prefix = '/Users/paulglen/Dropbox/CompBiophysics/1ptq.pdb'
+#prefix = '/Users/paulglen/Dropbox/CompBiophysics/cas9/1aqb.pdb'
+#prefix = '/Users/paulglen/github/NMA/Python/sandbox/1vom.pdb'
+#prefix = '/Users/paulglen/Dropbox/CompBiophysics/cas9/inma_test/em/em.gro'
 
-em = prefix + 'em/em.gro'
-ref = prefix + 'topol/conf.gro'
-trajFile = prefix + 'tiny.pdb'
+
+ref = prefix + 'first.pdb'
+em = ref
+trajFile = prefix + 'traj.pdb'
+#trajFile = prefix + 'tiny.pdb'
 #em = prefix
 #ref = prefix
 #trajFile = prefix

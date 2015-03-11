@@ -5,7 +5,7 @@ import numpy as np
 import itertools as it
 import time
 cutoff = 1.3 # [nm] - distance cutoff for hessian calc
-tc = 20 # number of chosen NormalModes for comparison
+tc = 1 # number of chosen NormalModes for comparison
 
 #------------------------------------------------
 # file parsing stuff
@@ -86,7 +86,7 @@ def GetDistances(R):
 # implementation of method from
 # Zheng et al, Proteins 2010 78:2469-2481
 # -----------------------------------------------
-def computeHessian(R, _Rij,NRES=0 ):
+def computeHessian(R,NRES=0 ):
 	if NRES == 0 :
 		NRES = len(R)
 	N = 3 * NRES
@@ -100,7 +100,8 @@ def computeHessian(R, _Rij,NRES=0 ):
 	for i in resList :
 
 		for j in resList :
-                    _dij = _Rij[i,j]
+
+                    _dij = Rij[i,j]
 
                     if _dij < cutoff:
 
@@ -108,7 +109,7 @@ def computeHessian(R, _Rij,NRES=0 ):
 
                             for k in resList:
 
-                                _dij = _Rij[i,k]
+                                _dij = Rij[i,k]
 
                                 if _dij < cutoff and i != k:
                                     if i == 0 and k == 6: print 'Aah!'
@@ -123,7 +124,7 @@ def computeHessian(R, _Rij,NRES=0 ):
                         else:
                             for qi,qj in PermsOfQ:
 
-                                _dij = _Rij[i,j]
+                                _dij = Rij[i,j]
                                 if _dij < cutoff:
                                     dqi = ( R[i][qi] - R[j][qi]) / _dij
                                     dqj = (R[i][qj] - R[j][qj]) / _dij
@@ -145,32 +146,28 @@ def DominantMode(evals, evecs):
 # --------------------------------
 class ENM:
 
-	def __init__(self,R,_Rij):
-		# eigenvalues: self.EigenFreqs
-		# eigenvectors: self.NormalModes
+	def __init__(self,R):
 		self.NRES = len(R)
 		self.N = 3* self.NRES
 		self.R = np.copy(R)
 
-		self.H = computeHessian(R ,np.copy(_Rij),NRES = self.NRES)
-                #print self.H[0,:]
-		#print self.H.shape
+                start = time.clock()
+		self.H = computeHessian(R ,NRES = self.NRES)
+                print 'hessian construction', time.clock() - start, 'sec'
 		start = time.clock()
 		self.EigenFreqs , self.NormalModes = np.linalg.eigh(self.H)
-		print 'time for hessian: ' , time.clock() - start
-                print 'cutoff: ', tc
+		print 'time for decomposition: ' , time.clock() - start, 'sec'
+                print 'cutoff: ', cutoff
 		print 'modes: ', self.EigenFreqs.shape
 		for i in range(self.N):
-                    print self.EigenFreqs[i]
-                sys.exit()
+                    print self.EigenFreqs[i], np.linalg.norm(self.NormalModes[i])
 
 
 		self.EigenFreqs = np.fabs(self.EigenFreqs)
 		idx = self.EigenFreqs.argsort()
 		self.EigenFreqs = self.EigenFreqs[idx]
-		#self.start = list(i > 1e-15 for i in self.EigenFreqs).index(True)
+		self.start = list(i > 1e-6 for i in self.EigenFreqs).index(True)
 		self.NormalModes = self.NormalModes[idx]
-		#self.V = DominantMode(self.EigenFreqs, self.NormalModes )
 
 	#--------------------------------------------------
 	# Structural Similarity and INM overlap calculation
@@ -189,6 +186,7 @@ class ENM:
 			X.append(dij)
 			itr += 1
 		di = max(X)
+                print di
 		return di
 
 	def Similarity(self, ref_enm):
@@ -217,7 +215,7 @@ def TrajectoryINMs(em, ref, trajFile):
 	#------------------------------------------------
 	# get reference conformation for comparison
 	Ri = ReadInCACoordinates(ref)
-	init = ENM(Ri,_Rij)
+	init = ENM(Ri)
 
 	#------------------------------------------------
 	# read in trajectory and calculate similarity
@@ -226,12 +224,11 @@ def TrajectoryINMs(em, ref, trajFile):
 	X = []
 	for R in traj :
 		print 'new frame'
-		curr = ENM(R,_Rij )
-		'''
+		curr = ENM(R)
+
 		sim = curr.Similarity(init)
 		X.append(sim)
-		'''
-	sys.exit()
+
 
 	return X
 
