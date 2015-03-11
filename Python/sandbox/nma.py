@@ -99,32 +99,34 @@ def computeHessian(R, _Rij,NRES=0 ):
 	#print 'Computing Hessian Matrix ...'
 	for i in resList :
 
-		for j in resList[i+1:] :
+		for j in resList :
 
-			_dij = _Rij[i,j]
+                        if i == j :
 
-			if _dij < cutoff:
+                            for k in resList:
 
-				for ip in [i,j]:
+                                _dij = _Rij[i,k]
 
-					for jp in [i,j]:
+                                if _dij < cutoff and i != k:
 
-						for qi,qj in PermsOfQ:
+                                    for qi,qj in PermsOfQ:
 
-							dqi = ( R[ip][qi] - R[jp][qi]) / _dij
-							dqj = (R[ip][qj] - R[jp][qj]) / _dij
-							if ip == jp :
-								if qi == qj :
-									h = dqi * dqi
-								else:
-									h = dqi * dqj
-							else:
-								if qi == qj:
-									h  = - dqi * dqj
-								else:
-									h  = dqi * dqj
+                                        dqi = ( R[i][qi] - R[k][qi]) / _dij
+                                        dqj = (R[i][qj] - R[k][qj]) / _dij
+                                        h = dqi * dqj
+                                        H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
 
-							H[3*ip+qi, 3*jp + qj] = H[3*ip+qi,3*jp+qj] + h
+                        else:
+                            for qi,qj in PermsOfQ:
+
+                                _dij = _Rij[i,j]
+                                dqi = ( R[i][qi] - R[j][qi]) / _dij
+                                dqj = (R[i][qj] - R[j][qj]) / _dij
+                                h = - dqi * dqj
+
+
+                                H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
+        #print H
 	return H
 
 def DominantMode(evals, evecs):
@@ -143,23 +145,23 @@ class ENM:
 		# eigenvectors: self.NormalModes
 		self.NRES = len(R)
 		self.N = 3* self.NRES
-		self.R = R
+		self.R = np.copy(R)
 
-		self.H = computeHessian(self.R,np.copy(_Rij),NRES = self.NRES)
+		self.H = computeHessian(R ,np.copy(_Rij),NRES = self.NRES)
 		#print self.H.shape
 		start = time.clock()
 		self.EigenFreqs , self.NormalModes = np.linalg.eigh(self.H)
-		print 'modes: '
-		for i in range(self.N):
-			print self.EigenFreqs[i]
 		print 'time for hessian: ' , time.clock() - start
 
 
 		self.EigenFreqs = np.fabs(self.EigenFreqs)
 		idx = self.EigenFreqs.argsort()
 		self.EigenFreqs = self.EigenFreqs[idx]
-		self.start = list(i > 1e-15 for i in self.EigenFreqs).index(True)
+		#self.start = list(i > 1e-15 for i in self.EigenFreqs).index(True)
 		self.NormalModes = self.NormalModes[idx]
+		print 'modes: ', self.EigenFreqs.shape
+		for i in range(tc):
+                    print self.EigenFreqs[i]
 		#self.V = DominantMode(self.EigenFreqs, self.NormalModes )
 
 	#--------------------------------------------------
@@ -188,11 +190,11 @@ class ENM:
 		lastIndex = firstIndex + min(tc, self.N)
 		itr = firstIndex
 		for wi in ref_enm.EigenFreqs[firstIndex:lastIndex]:
-			vi = ref_enm.NormalModes[itr]
-			weight = 1./wi
-			s += weight * self.ComputeOverlap(vi)
-			SumW  += weight
-			itr += 1
+                    vi = ref_enm.NormalModes[itr]
+                    weight = 1./wi
+                    s += weight * self.ComputeOverlap(vi)
+                    SumW  += weight
+                    itr += 1
 		s /= SumW
 		return s
 
