@@ -155,10 +155,10 @@ class ENM:
 		print 'time for hessian: ' , time.clock() - start
 
 
-		#self.EigenFreqs = np.fabs(self.EigenFreqs)
+		self.EigenFreqs = np.fabs(self.EigenFreqs)
 		idx = self.EigenFreqs.argsort()
 		self.EigenFreqs = self.EigenFreqs[idx]
-		self.start = list(i > 0 for i in self.EigenFreqs).index(True)
+		self.start = list(i > 1e-15 for i in self.EigenFreqs).index(True)
 		self.NormalModes = self.NormalModes[idx]
 		#self.V = DominantMode(self.EigenFreqs, self.NormalModes )
 
