@@ -163,7 +163,7 @@ class ENM:
                     print self.EigenFreqs[i], np.linalg.norm(self.NormalModes[i])
 
 
-		self.EigenFreqs = np.fabs(self.EigenFreqs)
+		#self.EigenFreqs = np.fabs(self.EigenFreqs)
 		idx = self.EigenFreqs.argsort()
 		self.EigenFreqs = self.EigenFreqs[idx]
 		self.start = list(i > 1e-6 for i in self.EigenFreqs).index(True)
@@ -186,7 +186,6 @@ class ENM:
 			X.append(dij)
 			itr += 1
 		di = max(X)
-                print di
 		return di
 
 	def Similarity(self, ref_enm):

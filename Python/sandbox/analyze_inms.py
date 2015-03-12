@@ -38,7 +38,7 @@ lenX = len(X)
 
 #------------------------------------------------
 # print all similarities
-ofn = prefix + 'inms.dat' # outfile name
+ofn = prefix + 'inms_2.dat' # outfile name
 outfile = open(ofn,'w')
 for i in range(len(X)):
     outfile.write('%i %f\n'%(i,X[i]))
