@@ -5,7 +5,7 @@ import numpy as np
 import itertools as it
 import time
 cutoff = 1.3 # [nm] - distance cutoff for hessian calc
-tc = 1 # number of chosen NormalModes for comparison
+tc = 3 # number of chosen NormalModes for comparison
 
 #------------------------------------------------
 # file parsing stuff
@@ -54,10 +54,12 @@ def ReadInPDBTrajectory(fn):
 	R = list()
 	fin = open(fn, 'r')
 	lines = [L for L in fin.readlines() if 'CA' == L[13:15] or 'END' == L[:3] ]
+	NL = len(lines)
 	fin.close()
 	traj = []
-	for line in lines:
-		if 'END' in line:
+	for i in range(NL):
+		line = lines[i]
+		if 'END' in line or i + 1 == NL:
 			traj.append(list(R))
 			R[:] = []
 		else:
@@ -86,53 +88,53 @@ def GetDistances(R):
 # implementation of method from
 # Zheng et al, Proteins 2010 78:2469-2481
 # -----------------------------------------------
-def computeHessian(R,NRES=0 ):
-	if NRES == 0 :
-		NRES = len(R)
+def computeHessian(R):
+	NRES = len(R)
 	N = 3 * NRES
 	H = np.zeros((N, N))
 	resList = range(NRES)
 	Rij = GetDistances(R)
 
-	PermsOfQ = list(it.product(range(3),range(3)) ) #
+	PermsOfQ = list(it.product(range(3),range(3)) ) # indices of sub-matrix indicating (x,x), (x,y), (x,z), etc.
 
 	#print 'Computing Hessian Matrix ...'
 	for i in resList :
 
 		for j in resList :
 
-                    _dij = Rij[i,j]
+			_dij = Rij[i,j]
 
-                    if _dij < cutoff:
+			if _dij < cutoff:
 
-                        if i == j :
+				if i == j :
 
-                            for k in resList:
+					for k in resList:
 
-                                _dij = Rij[i,k]
+						_dij = Rij[i,k]
 
-                                if _dij < cutoff and i != k:
-                                    if i == 0 and k == 6: print 'Aah!'
+						if _dij < cutoff and i != k:
+							if i == 0 and k == 6: print 'Aah!'
 
-                                    for qi,qj in PermsOfQ:
+							for qi,qj in PermsOfQ:
 
-                                        dqi = ( R[i][qi] - R[k][qi]) / _dij
-                                        dqj = (R[i][qj] - R[k][qj]) / _dij
-                                        h = dqi * dqj
-                                        H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
+								dqi = (R[i][qi] - R[k][qi]) / _dij
+								dqj = (R[i][qj] - R[k][qj]) / _dij
+								h = dqi * dqj
+								H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
 
-                        else:
-                            for qi,qj in PermsOfQ:
+				else:
+					for qi,qj in PermsOfQ:
 
-                                _dij = Rij[i,j]
-                                if _dij < cutoff:
-                                    dqi = ( R[i][qi] - R[j][qi]) / _dij
-                                    dqj = (R[i][qj] - R[j][qj]) / _dij
-                                    h = - dqi * dqj
+						_dij = Rij[i,j]
+						if _dij < cutoff:
+							dqi = ( R[i][qi] - R[j][qi]) / _dij
+							dqj = (R[i][qj] - R[j][qj]) / _dij
+							h = - dqi * dqj
 
 
-                                H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
-        #print H
+						H[3*i+qi, 3*j + qj] = H[3*i+qi,3*j+qj] + h
+	# print 'Hessian: '
+	# print H
 	return H
 
 def DominantMode(evals, evecs):
@@ -148,23 +150,26 @@ class ENM:
 
 	def __init__(self,R):
 		self.NRES = len(R)
-		print 'ENM-R',R
+		#print 'ENM-R',R
 		self.N = 3* self.NRES # Number of modes
 		self.R = np.copy(R)   # R=array of x,y,z coord
 
-                start = time.clock()
-		self.H = computeHessian(R ,NRES = self.NRES)
-                print 'hessian construction', time.clock() - start, 'sec'
+		# time hessian construction
+		start = time.clock()
+		self.H = computeHessian(R)
+		print 'hessian construction', time.clock() - start, 'sec'
+
+		# time eigendecomposition
 		start = time.clock()
 		self.EigenFreqs , self.NormalModes = np.linalg.eigh(self.H)
 		print 'time for decomposition: ' , time.clock() - start, 'sec'
-                print 'cutoff: ', cutoff
-		print 'modes: ', self.EigenFreqs.shape
-		for i in range(self.N):
-                    print self.EigenFreqs[i], np.linalg.norm(self.NormalModes[i])
+		#print 'cutoff: ', cutoff
+		#print 'modes: ', self.EigenFreqs.shape
+		#for i in range(self.N):
+		#    print self.EigenFreqs[i], np.linalg.norm(self.NormalModes[i])
 
 
-	#	self.EigenFreqs = np.fabs(self.EigenFreqs)
+	#   self.EigenFreqs = np.fabs(self.EigenFreqs)
 		if any (Freq < -1e-6 for Freq in self.EigenFreqs):
 			print 'NEGATIVE FREQ',Freq
 		idx = self.EigenFreqs.argsort() # idx is an array of indices
@@ -180,47 +185,44 @@ class ENM:
 
 	def ComputeOverlap(self,refMode):
 		X = []
-		firstIndex = self.start
-		itr = firstIndex
+		firstIndex = self.start # ensure not using zero modes
 		lastIndex = firstIndex + min(tc, self.N)
-		for wi in self.EigenFreqs[firstIndex:(lastIndex)]:
+		for itr in xrange(firstIndex,lastIndex):
 			vi = self.NormalModes[itr]
-			# ensure not using zero modes
 			dij =  np.fabs( np.dot(vi,refMode) )
 			X.append(dij)
-			itr += 1
 		di = max(X)
-                print di
-		print 'Degree of Overlap'
+		#print 'Degree of Overlap'
+		#print di
 		return di
-# self needs to be given for python class methods
+
+	# self needs to be given for python class methods
 	def Similarity(self, ref_enm):
 		s = 0 # similarity
 		SumW = 0 # denominator in eq 4
+
 		firstIndex = ref_enm.start # index of first non-zero mode
 		lastIndex = firstIndex + min(tc, self.N)
-		itr = firstIndex
-		for wi in ref_enm.EigenFreqs[firstIndex:(lastIndex)]:
-                    vi = ref_enm.NormalModes[itr]
-                    weight = 1.0/wi
-                    s += weight * self.ComputeOverlap(vi)
-                    SumW  += weight
-                    itr += 1
-		s /= SumW
+
+		for itr in xrange(firstIndex,lastIndex):
+			wi2 = ref_enm.EigenFreqs[itr]
+			vi = ref_enm.NormalModes[itr]
+			di = self.ComputeOverlap(vi)
+			weight = 1.0/wi2
+			s += weight * di
+			SumW  += weight
+
+		s /= SumW # ( normalization)
 		return s
 
 
-def TrajectoryINMs(em, ref, trajFile):
+def TrajectoryINMs(refPDBFile, trajFile):
 
-	#------------------------------------------------
-	# get distances from minimized structure
-	R0 = ReadInCACoordinates(em)
-	_Rij = GetDistances(R0)
 
 	#------------------------------------------------
 	# get reference conformation for comparison
-	Ri = ReadInCACoordinates(ref)
-	print Ri
+	Ri = ReadInCACoordinates(refPDBFile)
+	#print Ri
 	print 'READ REF STRUCT'
 	init = ENM(Ri)
 
@@ -228,13 +230,13 @@ def TrajectoryINMs(em, ref, trajFile):
 	# read in trajectory and calculate similarity
 	traj = ReadInPDBTrajectory(trajFile)
 	print 'TRAJ PDB READ IN'
-	print traj
+	#print traj
 	#traj = [ReadInGroFileCA(trajFile)]
 	X = []
 	for R in traj :
 		print 'new frame'
 		curr = ENM(R)
-# Using class method on curr class 
+# Using class method on curr class
 		sim = curr.Similarity(init)
 		X.append(sim)
 
